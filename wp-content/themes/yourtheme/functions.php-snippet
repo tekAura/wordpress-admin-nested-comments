@@ -2,4 +2,4 @@
  * Include topcomments functions.
  *
  */
-include_once( get_template_directory() . '/lib/topcomments.php' );
+include_once( 'lib/topcomments.php' );

@@ -448,24 +448,32 @@ class WP_Comments_List_Table extends WP_List_Table {
 		$this->screen->render_screen_reader_content( 'heading_list' );
 
 ?>
+
+<?php
+	global $nested_comments;
+	$nested_comments = TRUE;
+	if (isset( $_GET['comment_status'] ) && in_array($_GET['comment_status'], array("moderated", "approved", "spam", "trash"))) {
+	    $nested_comments = FALSE;
+	}
+?>
 <table class="wp-list-table <?php echo implode( ' ', $this->get_table_classes() ); ?>">
 	<thead>
 	<tr>
-		<td colspan="42" style="padding: unset !important;">
-			<table class="widefat">
+		<?php if ($nested_comments) { echo "<td colspan='42' style='padding: unset !important;'>"; 
+			echo "<table class='widefat'>"; } ?>
 				<?php $this->print_column_headers(); ?>
-			</table>
-		</td>
+			<?php if ($nested_comments) { echo "</table>";
+		echo "</td>"; } ?>
 	</tr>
 	</thead>
 
 	<tbody id="the-comment-list" data-wp-lists="list:comment">
 		<tr>
-			<td colspan="42" style="padding: unset !important;">
-			<table class="widefat">
+			<?php if ($nested_comments) { echo "<td colspan='42' style='padding: unset !important;'>";
+			echo "<table class='widefat'>"; } ?>
 					<?php $this->display_rows_or_placeholder(); ?>
-				</table>
-			</td>
+				<?php if ($nested_comments) { echo "</table>";
+			echo "</td>"; } ?>
 		</tr>
 	</tbody>
 
@@ -478,13 +486,13 @@ class WP_Comments_List_Table extends WP_List_Table {
 
 	<tfoot>
 		<tr>
-			<td colspan="42" style="padding: unset !important;">
-				<table class="widefat">
+			<?php if ($nested_comments) { echo "<td colspan='42' style='padding: unset !important;'>";
+				echo "<table class='widefat'>"; ?>
 					<tr>
-						<?php $this->print_column_headers( false ); ?>
+						<?php $this->print_column_headers( false ); } ?>
 					</tr>
-				</table>
-			</td>
+				<?php if ($nested_comments) { echo "</table>";
+			echo "</td>"; } ?>
 		</tr>
 	</tfoot>
 
@@ -501,7 +509,7 @@ class WP_Comments_List_Table extends WP_List_Table {
 	 * @param WP_Comment $item
 	 */
 	public function single_row( $item ) {
-		global $post, $comment, $getting_children;
+		global $post, $comment, $getting_children, $nested_comments;
 		$getting_children = FALSE;
 
 		$comment = $item;
@@ -511,25 +519,42 @@ class WP_Comments_List_Table extends WP_List_Table {
 		}
 		$this->user_can = current_user_can( 'edit_comment', $comment->comment_ID );
 
-		if ( !$comment->comment_parent ) {
+		if ($nested_comments) {
+			if ( !$comment->comment_parent ) {
+				$the_comment_class = wp_get_comment_status( $comment );
+				if ( ! $the_comment_class ) {
+					$the_comment_class = '';
+				}
+				$the_comment_class = join( ' ', get_comment_class( $the_comment_class, $comment, $comment->comment_post_ID ) );
+				echo "<tr id='comment-$comment->comment_ID' class='$the_comment_class'>";
+					echo "<td colspan='42' style='padding: unset !important;'>";
+						echo "<table class='parent_comment widefat' style='margin-left: 0px; border-spacing: unset;'>";
+							echo "<tbody>";
+								echo "<tr>";
+									$this->single_row_columns( $comment );
+								echo "</tr>\n";
+							echo "</tbody>";
+						echo "</table>";
+					echo "</td>";
+				echo "</tr>";
+	
+				$this->display_children_rows( $comment, 1 );
+			}
+		} else {
 			$the_comment_class = wp_get_comment_status( $comment );
 			if ( ! $the_comment_class ) {
 				$the_comment_class = '';
 			}
 			$the_comment_class = join( ' ', get_comment_class( $the_comment_class, $comment, $comment->comment_post_ID ) );
+	
+			if ( $comment->comment_post_ID > 0 ) {
+				$post = get_post( $comment->comment_post_ID );
+			}
+			$this->user_can = current_user_can( 'edit_comment', $comment->comment_ID );
+	
 			echo "<tr id='comment-$comment->comment_ID' class='$the_comment_class'>";
-				echo "<td colspan='42' style='padding: unset !important;'>";
-					echo "<table class='parent_comment widefat' style='margin-left: 0px; border-spacing: unset;'>";
-						echo "<tbody>";
-							echo "<tr>";
-								$this->single_row_columns( $comment );
-							echo "</tr>\n";
-						echo "</tbody>";
-					echo "</table>";
-				echo "</td>";
-			echo "</tr>";
-
-			$this->display_children_rows( $comment, 1 );
+			$this->single_row_columns( $comment );
+			echo "</tr>\n";
 		}
 
 		unset( $GLOBALS['post'], $GLOBALS['comment'] );
